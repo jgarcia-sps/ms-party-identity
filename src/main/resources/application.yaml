@@ -1,3 +1,9 @@
 spring:
   application:
     name: ms-party-identity
+
+grpc:
+  server:
+    port: 9090
+
+
