@@ -13,7 +13,10 @@ import com.bancoppel.security.auth.proto.ValidateTokenRequest;
 import com.bancoppel.security.auth.proto.ValidateTokenResponse;
 import com.nimbusds.jose.JWEObject;
 import com.nimbusds.jose.crypto.RSADecrypter;
-
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import java.util.List;
+import java.util.Date;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 
@@ -29,8 +32,8 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             
             
             System.out.println("--->"+tokenJEW);
-            String tokenJET = decodeJWEToken(tokenJEW);
-            System.out.println("--->"+tokenJET);
+            SignedJWT tokenJET = decodeJWEToken(tokenJEW);
+            List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
             
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
                     .setAuthenticated(true)
@@ -51,7 +54,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
     }
 
 
-    private String decodeJWEToken(String jwe) throws Exception{
+    private SignedJWT decodeJWEToken(String jwe) throws Exception{
         JWEObject jweObject = JWEObject.parse(jwe);
 
         System.out.println("Header: " + jweObject.getHeader());
@@ -75,6 +78,28 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
         jweObject.decrypt(decrypter);
 
         // 4️⃣ Resultado
-        return jweObject.getPayload().toString();
+        
+         System.out.println("--->"+jweObject.getPayload().toString());
+        return jweObject.getPayload().toSignedJWT();
+    }
+
+    private void validateJWTClaims( List<com.bancoppel.security.auth.proto.Claim> claimsList, SignedJWT signedJWT)throws Exception{
+
+
+    JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
+        if (!claims.getIssuer().equals("https://TU_DOMINIO.auth0.com/")) {
+            throw new SecurityException("Invalid issuer");
+        }
+
+        // audience
+        if (!claims.getAudience().contains("tu-api")) {
+            throw new SecurityException("Invalid audience");
+        }
+
+        // expiration
+        if (claims.getExpirationTime().before(new Date())) {
+            throw new SecurityException("Token expired");
+        }
+
     }
 }
