@@ -47,7 +47,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
                     .setClient("VhtS2wmrbuHi9smLWIdpzyguCi53Jwxj")
                     .setGrantType("client-credentials")
                     .setAudience("https://api.internal.company")
-                    .setError("0")
+                    .setError(0)
                     .setMessage("OK")
                     .build();
             

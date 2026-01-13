@@ -31,6 +31,6 @@ message ValidateTokenResponse {
   string client = 7;
   string grantType = 8;
   string audience = 9;
-  string error = 10;
+  int32 error = 10;
   string message = 11;
 }
