@@ -7,6 +7,8 @@ import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 
 import com.bancoppel.security.auth.proto.TokenValidationServiceGrpc;
 import com.bancoppel.security.auth.proto.ValidateTokenRequest;
@@ -15,8 +17,7 @@ import com.nimbusds.jose.JWEObject;
 import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import java.util.List;
-import java.util.Date;
+
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 
@@ -29,20 +30,24 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
        
         try {
             String tokenJEW = request.getAccessToken().replace("Bearer", "").replace(":", "").trim();
+            String pathPrivateKey = request.getPathPrivateKey();
             
-            
-            System.out.println("--->"+tokenJEW);
-            SignedJWT tokenJET = decodeJWEToken(tokenJEW);
+            System.out.println("tokenJEW--->"+tokenJEW);
+            System.out.println("Path--->"+pathPrivateKey);
+            SignedJWT tokenJET = decodeJWEToken(tokenJEW,pathPrivateKey);
             List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
             
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
+                    .setScopes("write read update")
+                    .addPermissions("read")
                     .setAuthenticated(true)
                     .setAuthorized(true)
-                    .addScopes("read")
-                    .addPermissions("all")
-                    .setSubject("service-a")
-                    .setExpiresAt(System.currentTimeMillis() / 1000 + 3600)
-                    .setError("1")
+                    .setSubject("VhtS2wmrbuHi9smLWIdpzyguCi53Jwxj@clients")
+                    .setExpires(System.currentTimeMillis() / 1000 + 3600)
+                    .setClient("VhtS2wmrbuHi9smLWIdpzyguCi53Jwxj")
+                    .setGrantType("client-credentials")
+                    .setAudience("https://api.internal.company")
+                    .setError("0")
                     .setMessage("OK")
                     .build();
             
@@ -54,13 +59,13 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
     }
 
 
-    private SignedJWT decodeJWEToken(String jwe) throws Exception{
+    private SignedJWT decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
         JWEObject jweObject = JWEObject.parse(jwe);
 
         System.out.println("Header: " + jweObject.getHeader());
 
         // 2️⃣ Cargar llave privada PKCS#8
-        String pem = Files.readString(Path.of("D:/1-Actividades/1-COPPEL/DesarrolloJWE/parDellaves/private_key.pem"));
+        String pem = Files.readString(Path.of(pathPrivateKey));
 
         String privateKeyPem = pem
                 .replace("-----BEGIN PRIVATE KEY-----", "")

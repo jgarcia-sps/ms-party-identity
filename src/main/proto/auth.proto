@@ -18,15 +18,19 @@ message Claim {
 message ValidateTokenRequest {
   string accessToken = 1;
   repeated Claim claims = 2;
+  string pathPrivateKey = 3;
 }
 
 message ValidateTokenResponse {
-  bool authenticated = 1;
-  bool authorized = 2;
-  string subject = 3;
-  repeated string scopes = 4;
-  repeated string permissions = 5;
-  int64 expires_at = 6;
-  string error = 7;
-  string message = 8;
+  string scopes = 1;
+  repeated string permissions = 2;
+  bool authenticated = 3;
+  bool authorized = 4;
+  string subject = 5;
+  int64 expires = 6;
+  string client = 7;
+  string grantType = 8;
+  string audience = 9;
+  string error = 10;
+  string message = 11;
 }
