@@ -13,9 +13,28 @@ import java.util.List;
 import com.bancoppel.security.auth.proto.TokenValidationServiceGrpc;
 import com.bancoppel.security.auth.proto.ValidateTokenRequest;
 import com.bancoppel.security.auth.proto.ValidateTokenResponse;
+import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWEObject;
-import com.nimbusds.jose.crypto.RSADecrypter;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import com.nimbusds.jose.proc.SecurityContext;
+
+import java.net.URL;
+
+import com.nimbusds.jose.crypto.RSADecrypter;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.SignedJWT;
 
 import io.grpc.stub.StreamObserver;
@@ -39,7 +58,6 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
                     .setScopes("write read update")
-                    .addPermissions("read")
                     .setAuthenticated(true)
                     .setAuthorized(true)
                     .setSubject("VhtS2wmrbuHi9smLWIdpzyguCi53Jwxj@clients")
@@ -60,11 +78,23 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
 
 
     private SignedJWT decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
-        JWEObject jweObject = JWEObject.parse(jwe);
+        JWEObject jweObject = JWEObject.parse(jwe); //1️⃣ Recibir y parsear el JWE
 
-        System.out.println("Header: " + jweObject.getHeader());
+        
+        JWEHeader header = jweObject.getHeader();
 
-        // 2️⃣ Cargar llave privada PKCS#8
+        System.out.println("Header: " + header);
+
+        String kid = header.getKeyID();//2️⃣ Resolver el kid
+
+        System.out.println("kid: " + kid);
+        /*
+           // AQUI VA KMS [3] Obtener Private Key desde KMS
+           3️⃣ Obtener la Private Key desde KMS (NO del filesystem)
+           // Este kid debe existir en tu KMS / Key Vault.
+          RSAPrivateKey privateKey = kmsClient.getPrivateKeyByKid(kid);
+        */
+    
         String pem = Files.readString(Path.of(pathPrivateKey));
 
         String privateKeyPem = pem
@@ -78,13 +108,27 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
 
-        // 3️⃣ Desencriptar
+       
         RSADecrypter decrypter = new RSADecrypter((RSAPrivateKey) privateKey);
-        jweObject.decrypt(decrypter);
+        jweObject.decrypt(decrypter);//4️⃣ Desencriptar el JWE
 
-        // 4️⃣ Resultado
-        
-         System.out.println("--->"+jweObject.getPayload().toString());
+      
+       String innerJwt =jweObject.getPayload().toString();// 5️⃣ Extraer el JWT interno (JWS)
+         System.out.println("--->"+innerJwt);
+        JWT jwt = JWTParser.parse(innerJwt);
+
+        String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/"; // Reemplazar con tu dominio de Auth0
+        String JWKS_URI = AUTH0_DOMAIN + ".well-known/jwks.json";
+
+ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+              JWKSource<SecurityContext> jwkSource = new RemoteJWKSet<>(new URL(JWKS_URI));
+
+        // Especificar el algoritmo de firma esperado (RS256 es el predeterminado de Auth0)
+        JWSKeySelector<SecurityContext> keySelector =
+                new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSource);
+        System.out.println("SI PASO POR AQUI--->");
+        jwtProcessor.setJWSKeySelector(keySelector);
+        System.out.println("SI TERMINA ESTE PASO--->");
         return jweObject.getPayload().toSignedJWT();
     }
 

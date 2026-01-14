@@ -23,14 +23,13 @@ message ValidateTokenRequest {
 
 message ValidateTokenResponse {
   string scopes = 1;
-  repeated string permissions = 2;
-  bool authenticated = 3;
-  bool authorized = 4;
-  string subject = 5;
-  int64 expires = 6;
-  string client = 7;
-  string grantType = 8;
-  string audience = 9;
-  int32 error = 10;
-  string message = 11;
+  bool authenticated = 2;
+  bool authorized = 3;
+  string subject = 4;
+  int64 expires = 5;
+  string client = 6;
+  string grantType = 7;
+  string audience = 8;
+  int32 error = 9;
+  string message = 10;
 }
