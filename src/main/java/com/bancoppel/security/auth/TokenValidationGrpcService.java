@@ -54,6 +54,9 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             System.out.println("tokenJEW--->"+tokenJEW);
             System.out.println("Path--->"+pathPrivateKey);
             SignedJWT tokenJET = decodeJWEToken(tokenJEW,pathPrivateKey);
+
+            JWTClaimsSet claims = tokenJET.getJWTClaimsSet();
+            System.out.println("Audience--->"+claims.getAudience());
             List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
             
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
@@ -115,7 +118,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
       
        String innerJwt =jweObject.getPayload().toString();// 5️⃣ Extraer el JWT interno (JWS)
          System.out.println("--->"+innerJwt);
-        JWT jwt = JWTParser.parse(innerJwt);
+      
 
         String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/"; // Reemplazar con tu dominio de Auth0
         String JWKS_URI = AUTH0_DOMAIN + ".well-known/jwks.json";
