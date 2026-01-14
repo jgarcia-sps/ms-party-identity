@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.bancoppel.security.auth.proto.TokenValidationServiceGrpc;
 import com.bancoppel.security.auth.proto.ValidateTokenRequest;
@@ -52,8 +53,9 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
 
             List<String> roles = (ArrayList) claims.getClaim("https://empresanet.bancoppel.com/roles");
             System.out.println("roles:--->"+roles.getFirst());
-            System.out.println("roles:--->"+claims.getClaims());
+            Map<String, Object> claimsListMap= claims.getClaims();
 
+            claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
             List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
             
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
