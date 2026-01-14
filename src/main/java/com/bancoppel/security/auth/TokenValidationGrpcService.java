@@ -1,11 +1,13 @@
 package com.bancoppel.security.auth;
 
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -16,26 +18,16 @@ import com.bancoppel.security.auth.proto.ValidateTokenResponse;
 import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWEObject;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.jwk.source.RemoteJWKSet;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.JWTParser;
-import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import com.nimbusds.jose.proc.SecurityContext;
-
-import java.net.URL;
-
-import com.nimbusds.jose.crypto.RSADecrypter;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.JWTParser;
-import com.nimbusds.jwt.SignedJWT;
 
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
@@ -57,6 +49,11 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
 
             JWTClaimsSet claims = tokenJET.getJWTClaimsSet();
             System.out.println("Audience--->"+claims.getAudience());
+
+            List<String> roles = (ArrayList) claims.getClaim("https://empresanet.bancoppel.com/roles");
+            System.out.println("roles:--->"+roles.getFirst());
+            System.out.println("roles:--->"+claims.getClaims());
+
             List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
             
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
