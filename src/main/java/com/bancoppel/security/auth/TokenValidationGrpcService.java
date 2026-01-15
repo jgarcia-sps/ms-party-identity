@@ -13,9 +13,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.Instant;
 
 import com.bancoppel.security.auth.proto.TokenValidationServiceGrpc;
 import com.bancoppel.security.auth.proto.ValidateTokenRequest;
+import com.bancoppel.security.auth.proto.MetaValidateToken;
+import com.bancoppel.security.auth.proto.DataValidateToken;
 import com.bancoppel.security.auth.proto.ValidateTokenResponse;
 import com.google.protobuf.Value;
 import com.nimbusds.jose.JWEHeader;
@@ -59,7 +62,9 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             JWTClaimsSet claims = validateSignature(jwt);    
             validateJWTClaims(claims,request);
            
-            ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
+
+
+            DataValidateToken data = DataValidateToken.newBuilder()
                     .setAuthenticated(true)
                     .setAuthorized(true)
                     .setJwt(strJWT)  
@@ -69,9 +74,21 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
                                         e -> ProtoValueMapper.toValue(e.getValue())
                                     ))
                     )                 
-                    .setError(0)
-                    .setMessage("OK")
                     .build();
+
+
+
+MetaValidateToken meta = MetaValidateToken.newBuilder()
+.setStatus("OK")
+.setStatusCode(0)
+.setTimestamp(Instant.now().toString())
+.setMessage("SUCCESS")
+.build();
+
+ ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
+ .setMeta(meta)
+ .setData(data)
+ .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception ex) {
