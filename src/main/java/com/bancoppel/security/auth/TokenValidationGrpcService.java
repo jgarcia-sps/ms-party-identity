@@ -27,8 +27,11 @@ import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 import com.nimbusds.jose.proc.JWSKeySelector;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 
@@ -43,20 +46,14 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
                          StreamObserver<ValidateTokenResponse> responseObserver) {
        
         try {
-            String tokenJEW = request.getAccessToken().replace("Bearer", "").replace(":", "").trim();
+            String tokenJWE = request.getAccessToken().replace("Bearer", "").replace(":", "").trim();
             String pathPrivateKey = request.getPathPrivateKey();
             
-            System.out.println("tokenJEW--->"+tokenJEW);
+            System.out.println("tokenJEW--->"+tokenJWE);
             System.out.println("Path--->"+pathPrivateKey);
-            SignedJWT tokenJET = decodeJWEToken(tokenJEW,pathPrivateKey);
-
-            JWTClaimsSet claims = tokenJET.getJWTClaimsSet();
-            System.out.println("Audience--->"+claims.getAudience());
-
-            List<String> roles = (ArrayList) claims.getClaim("https://empresanet.bancoppel.com/roles");
-            System.out.println("roles:--->"+roles.getFirst());
+            JWT jwt = decodeJWEToken(tokenJWE,pathPrivateKey);
+            JWTClaimsSet claims = validateSignature(jwt);
             Map<String, Object> claimsListMap= claims.getClaims();
-
             claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
             List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
@@ -80,7 +77,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
     }
 
 
-    private SignedJWT decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
+    private JWT  decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
         JWEObject jweObject = JWEObject.parse(jwe); //1️⃣ Recibir y parsear el JWE
 
         
@@ -116,28 +113,45 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
         jweObject.decrypt(decrypter);//4️⃣ Desencriptar el JWE
 
       
-       String innerJwt =jweObject.getPayload().toString();// 5️⃣ Extraer el JWT interno (JWS)
-         System.out.println("--->"+innerJwt);
-      
+        String innerJwt =jweObject.getPayload().toString();// 5️⃣ Extraer el JWT interno (JWS)
+        System.out.println("--->"+innerJwt);
+        return JWTParser.parse(innerJwt);
+    }
 
-        String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/"; // Reemplazar con tu dominio de Auth0
+
+    private JWTClaimsSet  validateSignature(JWT jwt) throws Exception{
+        String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/";
         String JWKS_URI = AUTH0_DOMAIN + ".well-known/jwks.json";
 
-ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-              JWKSource<SecurityContext> jwkSource = new RemoteJWKSet<>(new URL(JWKS_URI));
+        ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+        JWKSource<SecurityContext> jwkSource = new RemoteJWKSet<>(new URL(JWKS_URI));
 
         // Especificar el algoritmo de firma esperado (RS256 es el predeterminado de Auth0)
         JWSKeySelector<SecurityContext> keySelector =
                 new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSource);
-        System.out.println("SI PASO POR AQUI--->");
         jwtProcessor.setJWSKeySelector(keySelector);
-        System.out.println("SI TERMINA ESTE PASO--->");
-        return jweObject.getPayload().toSignedJWT();
+
+          // 5️⃣ Validaciones de claims
+        jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
+/*
+            if (!issuer.equals(claims.getIssuer())) {
+                throw new BadJWTException("Issuer inválido");
+            }
+
+            if (!claims.getAudience().contains(expectedAudience)) {
+                throw new BadJWTException("Audience inválido");
+            }
+ */
+            if (claims.getExpirationTime() == null ||
+                claims.getExpirationTime().before(new Date())) {
+                throw new BadJWTException("Token expirado");
+            }
+        });
+
+        return jwtProcessor.process(jwt, null);
     }
 
     private void validateJWTClaims( List<com.bancoppel.security.auth.proto.Claim> claimsList, SignedJWT signedJWT)throws Exception{
-
-
     JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
         if (!claims.getIssuer().equals("https://TU_DOMINIO.auth0.com/")) {
             throw new SecurityException("Invalid issuer");
