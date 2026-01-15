@@ -14,7 +14,7 @@ service TokenValidationService {
 
 message ValidateTokenRequest {
   string accessToken = 1;
-  map<string, string> claims = 2;
+  map<string, google.protobuf.Value> claims = 2;
   string pathPrivateKey = 3;
 }
 

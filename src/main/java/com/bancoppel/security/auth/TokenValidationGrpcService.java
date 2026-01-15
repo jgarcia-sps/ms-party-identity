@@ -7,18 +7,16 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.time.Instant;
 
+import com.bancoppel.security.auth.proto.DataValidateToken;
+import com.bancoppel.security.auth.proto.MetaValidateToken;
 import com.bancoppel.security.auth.proto.TokenValidationServiceGrpc;
 import com.bancoppel.security.auth.proto.ValidateTokenRequest;
-import com.bancoppel.security.auth.proto.MetaValidateToken;
-import com.bancoppel.security.auth.proto.DataValidateToken;
 import com.bancoppel.security.auth.proto.ValidateTokenResponse;
 import com.google.protobuf.Value;
 import com.nimbusds.jose.JWEHeader;
@@ -33,7 +31,6 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
-import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
@@ -153,11 +150,21 @@ MetaValidateToken meta = MetaValidateToken.newBuilder()
     private void validateJWTClaims(JWTClaimsSet claims,ValidateTokenRequest request)throws Exception{
     Map<String, Object> claimsListMap= claims.getClaims();
     claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
-    String expectedIssuer = request.getClaimsOrThrow("issuer");
+
+    Value issuerValue = request.getClaimsMap().get("issuer");
+    String expectedIssuer = issuerValue.getStringValue();
+    System.out.println("expectedIssuer--->"+expectedIssuer);
+
+    Value subjectValue = request.getClaimsMap().get("subject");
+    Boolean expectedSubject = subjectValue.getBoolValue();
+    System.out.println("booleanSubject--->"+expectedSubject);
+    
             if (!claims.getIssuer().contains(expectedIssuer)) {
                 throw new BadJWTException("Issuer inválido");
             }
-    String expectedAudience = request.getClaimsOrThrow("audience");
+     Value audienceValue  = request.getClaimsMap().get("audience");
+     String expectedAudience = audienceValue.getStringValue();
+     System.out.println("expectedAudience--->"+expectedAudience);
             if (!claims.getAudience().contains(expectedAudience)) {
                 throw new BadJWTException("Audience inválido");
             }
