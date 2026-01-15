@@ -12,10 +12,12 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.bancoppel.security.auth.proto.TokenValidationServiceGrpc;
 import com.bancoppel.security.auth.proto.ValidateTokenRequest;
 import com.bancoppel.security.auth.proto.ValidateTokenResponse;
+import com.google.protobuf.Value;
 import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWEObject;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -57,20 +59,19 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
 
             claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
             List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
-            
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
-                    .setScopes("write read update")
                     .setAuthenticated(true)
                     .setAuthorized(true)
-                    .setSubject("VhtS2wmrbuHi9smLWIdpzyguCi53Jwxj@clients")
-                    .setExpires(System.currentTimeMillis() / 1000 + 3600)
-                    .setClient("VhtS2wmrbuHi9smLWIdpzyguCi53Jwxj")
-                    .setGrantType("client-credentials")
-                    .setAudience("https://api.internal.company")
+                    .setJwt("VhtS2wmrbuHi9smLWIdpzyguCi53Jwx")  
+                    .putAllClaims(claimsListMap.entrySet().stream()
+                                .collect(Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        e -> ProtoValueMapper.toValue(e.getValue())
+                                    ))
+                    )                 
                     .setError(0)
                     .setMessage("OK")
                     .build();
-            
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception ex) {

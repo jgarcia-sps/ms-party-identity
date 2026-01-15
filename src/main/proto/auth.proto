@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package security.authz.v1;
 
+import "google/protobuf/struct.proto";
+
 option java_multiple_files = true;
 option java_package = "com.bancoppel.security.auth.proto";
 option java_outer_classname = "AuthzProto";
@@ -22,14 +24,10 @@ message ValidateTokenRequest {
 }
 
 message ValidateTokenResponse {
-  string scopes = 1;
-  bool authenticated = 2;
-  bool authorized = 3;
-  string subject = 4;
-  int64 expires = 5;
-  string client = 6;
-  string grantType = 7;
-  string audience = 8;
-  int32 error = 9;
-  string message = 10;
+  bool authenticated = 1;
+  bool authorized = 2;
+  string jwt = 3;
+  map<string,google.protobuf.Value> claims = 4;
+  int32 error = 5;
+  string message = 6;
 }
