@@ -51,7 +51,10 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             
             System.out.println("tokenJEW--->"+tokenJWE);
             System.out.println("Path--->"+pathPrivateKey);
-            JWT jwt = decodeJWEToken(tokenJWE,pathPrivateKey);
+            String strJWT=decodeJWEToken(tokenJWE,pathPrivateKey);
+            JWT jwt = JWTParser.parse(strJWT);
+
+             System.out.println("jwt--->"+jwt.toString());
             JWTClaimsSet claims = validateSignature(jwt);
             Map<String, Object> claimsListMap= claims.getClaims();
             claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
@@ -59,7 +62,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
                     .setAuthenticated(true)
                     .setAuthorized(true)
-                    .setJwt("VhtS2wmrbuHi9smLWIdpzyguCi53Jwx")  
+                    .setJwt(strJWT)  
                     .putAllClaims(claimsListMap.entrySet().stream()
                                 .collect(Collectors.toMap(
                                         Map.Entry::getKey,
@@ -77,7 +80,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
     }
 
 
-    private JWT  decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
+    private String  decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
         JWEObject jweObject = JWEObject.parse(jwe); //1️⃣ Recibir y parsear el JWE
 
         
@@ -111,16 +114,13 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
        
         RSADecrypter decrypter = new RSADecrypter((RSAPrivateKey) privateKey);
         jweObject.decrypt(decrypter);//4️⃣ Desencriptar el JWE
-
-      
-        String innerJwt =jweObject.getPayload().toString();// 5️⃣ Extraer el JWT interno (JWS)
-        System.out.println("--->"+innerJwt);
-        return JWTParser.parse(innerJwt);
+        return jweObject.getPayload().toString();
     }
 
 
     private JWTClaimsSet  validateSignature(JWT jwt) throws Exception{
         String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/";
+       // String AUTH0_DOMAIN = "https://dev-q8g17t3m0u4w8rf4.us.auth0.com/";        
         String JWKS_URI = AUTH0_DOMAIN + ".well-known/jwks.json";
 
         ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
