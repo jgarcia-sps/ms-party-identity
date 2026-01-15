@@ -8,6 +8,7 @@ import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
@@ -165,7 +166,10 @@ MetaValidateToken meta = MetaValidateToken.newBuilder()
      Value audienceValue  = request.getClaimsMap().get("audience");
      String expectedAudience = audienceValue.getStringValue();
      System.out.println("expectedAudience--->"+expectedAudience);
-            if (!claims.getAudience().contains(expectedAudience)) {
+     String[] arrayExpectedAudience = expectedAudience.split(",");
+ 
+            if (Arrays.stream(arrayExpectedAudience)
+                           .anyMatch(valor -> valor.equals(claims.getAudience()))) {
                 throw new BadJWTException("Audience inválido");
             }
             // expiration
