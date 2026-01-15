@@ -19,7 +19,7 @@ message Claim {
 
 message ValidateTokenRequest {
   string accessToken = 1;
-  repeated Claim claims = 2;
+  map<string, string> claims = 2;
   string pathPrivateKey = 3;
 }
 

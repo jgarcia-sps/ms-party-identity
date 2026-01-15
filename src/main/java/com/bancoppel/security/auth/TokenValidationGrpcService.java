@@ -55,15 +55,15 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             JWT jwt = JWTParser.parse(strJWT);
 
              System.out.println("jwt--->"+jwt.toString());
-            JWTClaimsSet claims = validateSignature(jwt);
-            Map<String, Object> claimsListMap= claims.getClaims();
-            claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
-            List<com.bancoppel.security.auth.proto.Claim> claimsList = request.getClaimsList();
+             
+            JWTClaimsSet claims = validateSignature(jwt);    
+            validateJWTClaims(claims,request);
+           
             ValidateTokenResponse response = ValidateTokenResponse.newBuilder()
                     .setAuthenticated(true)
                     .setAuthorized(true)
                     .setJwt(strJWT)  
-                    .putAllClaims(claimsListMap.entrySet().stream()
+                    .putAllClaims(claims.getClaims().entrySet().stream()
                                 .collect(Collectors.toMap(
                                         Map.Entry::getKey,
                                         e -> ProtoValueMapper.toValue(e.getValue())
@@ -130,42 +130,25 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
         JWSKeySelector<SecurityContext> keySelector =
                 new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSource);
         jwtProcessor.setJWSKeySelector(keySelector);
+        return jwtProcessor.process(jwt, null);
+    }
 
-          // 5️⃣ Validaciones de claims
-        jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> {
-/*
-            if (!issuer.equals(claims.getIssuer())) {
+    private void validateJWTClaims(JWTClaimsSet claims,ValidateTokenRequest request)throws Exception{
+    Map<String, Object> claimsListMap= claims.getClaims();
+    claimsListMap.forEach((k,v) -> System.out.println("Key: " + k + ": Value: " + v));
+    String expectedIssuer = request.getClaimsOrThrow("issuer");
+            if (!claims.getIssuer().contains(expectedIssuer)) {
                 throw new BadJWTException("Issuer inválido");
             }
-
+    String expectedAudience = request.getClaimsOrThrow("audience");
             if (!claims.getAudience().contains(expectedAudience)) {
                 throw new BadJWTException("Audience inválido");
             }
- */
+            // expiration
             if (claims.getExpirationTime() == null ||
                 claims.getExpirationTime().before(new Date())) {
                 throw new BadJWTException("Token expirado");
             }
-        });
-
-        return jwtProcessor.process(jwt, null);
-    }
-
-    private void validateJWTClaims( List<com.bancoppel.security.auth.proto.Claim> claimsList, SignedJWT signedJWT)throws Exception{
-    JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
-        if (!claims.getIssuer().equals("https://TU_DOMINIO.auth0.com/")) {
-            throw new SecurityException("Invalid issuer");
-        }
-
-        // audience
-        if (!claims.getAudience().contains("tu-api")) {
-            throw new SecurityException("Invalid audience");
-        }
-
-        // expiration
-        if (claims.getExpirationTime().before(new Date())) {
-            throw new SecurityException("Token expired");
-        }
 
     }
 }
