@@ -43,14 +43,11 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
        
         try {
             String tokenJWE = request.getAccessToken().replace("Bearer", "").replace(":", "").trim();
-            String pathPrivateKey = request.getPathPrivateKey();
-            
             System.out.println("tokenJEW--->"+tokenJWE);
-            System.out.println("Path--->"+pathPrivateKey);
             String strJWT=decodeJWEToken(tokenJWE);
             JWT jwt = JWTParser.parse(strJWT);
 
-             System.out.println("jwt--->"+jwt.toString());
+             System.out.println("jwt--->"+strJWT);
              
             JWTClaimsSet claims = validateSignature(jwt);    
             validateJWTClaims(claims,request);
