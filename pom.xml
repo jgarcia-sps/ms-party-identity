@@ -65,6 +65,12 @@
       <artifactId>nimbus-jose-jwt</artifactId>
       <version>${nimbus.version}</version>
     </dependency>
+            <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>kms</artifactId>
+            <version>2.41.10</version>
+            <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>

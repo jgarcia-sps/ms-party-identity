@@ -1,15 +1,8 @@
 package com.bancoppel.security.auth;
 
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,7 +16,6 @@ import com.google.protobuf.Value;
 import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWEObject;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 import com.nimbusds.jose.proc.JWSKeySelector;
@@ -38,6 +30,9 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.kms.KmsClient;
+
 
 @GrpcService
 public class TokenValidationGrpcService extends TokenValidationServiceGrpc.TokenValidationServiceImplBase {
@@ -52,7 +47,7 @@ public class TokenValidationGrpcService extends TokenValidationServiceGrpc.Token
             
             System.out.println("tokenJEW--->"+tokenJWE);
             System.out.println("Path--->"+pathPrivateKey);
-            String strJWT=decodeJWEToken(tokenJWE,pathPrivateKey);
+            String strJWT=decodeJWEToken(tokenJWE);
             JWT jwt = JWTParser.parse(strJWT);
 
              System.out.println("jwt--->"+jwt.toString());
@@ -95,7 +90,7 @@ MetaValidateToken meta = MetaValidateToken.newBuilder()
     }
 
 
-    private String  decodeJWEToken(String jwe, String pathPrivateKey) throws Exception{
+    private String  decodeJWEToken(String jwe) throws Exception{
         JWEObject jweObject = JWEObject.parse(jwe); //1️⃣ Recibir y parsear el JWE
 
         
@@ -106,36 +101,24 @@ MetaValidateToken meta = MetaValidateToken.newBuilder()
         String kid = header.getKeyID();//2️⃣ Resolver el kid
 
         System.out.println("kid: " + kid);
-        /*
-           // AQUI VA KMS [3] Obtener Private Key desde KMS
-           3️⃣ Obtener la Private Key desde KMS (NO del filesystem)
-           // Este kid debe existir en tu KMS / Key Vault.
-          RSAPrivateKey privateKey = kmsClient.getPrivateKeyByKid(kid);
-        */
-    
-        String pem = Files.readString(Path.of(pathPrivateKey));
 
-        String privateKeyPem = pem
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
+        System.out.println("AWS_ACCESS_KEY_ID"+System.getenv("AWS_ACCESS_KEY_ID"));
+        System.out.println("AWS_SECRET_ACCESS_KEY"+System.getenv("AWS_SECRET_ACCESS_KEY"));
+        KmsClient kmsClient = KmsClient.builder()
+            .region(Region.US_EAST_2)
+            .build();
 
-        byte[] keyBytes = Base64.getDecoder().decode(privateKeyPem);
+        String kmsKeyId = "arn:aws:kms:us-east-2:130537859737:key/d3e5506e-0447-4d15-93b8-aa7c35f7a834";
+        AwsKmsRSADecrypter decrypter =new AwsKmsRSADecrypter(kmsClient, kmsKeyId);
+        jweObject.decrypt(decrypter);
 
-        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
-
-       
-        RSADecrypter decrypter = new RSADecrypter((RSAPrivateKey) privateKey);
-        jweObject.decrypt(decrypter);//4️⃣ Desencriptar el JWE
         return jweObject.getPayload().toString();
     }
 
 
     private JWTClaimsSet  validateSignature(JWT jwt) throws Exception{
-        String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/";
-       // String AUTH0_DOMAIN = "https://dev-q8g17t3m0u4w8rf4.us.auth0.com/";        
+       // String AUTH0_DOMAIN = "https://bancoppel-dev.coppel-dev.auth0app.com/";
+        String AUTH0_DOMAIN = "https://dev-q8g17t3m0u4w8rf4.us.auth0.com/";        
         String JWKS_URI = AUTH0_DOMAIN + ".well-known/jwks.json";
 
         ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
@@ -155,11 +138,7 @@ MetaValidateToken meta = MetaValidateToken.newBuilder()
     Value issuerValue = request.getClaimsMap().get("issuer");
     String expectedIssuer = issuerValue.getStringValue();
     System.out.println("expectedIssuer--->"+expectedIssuer);
-
-    Value subjectValue = request.getClaimsMap().get("subject");
-    Boolean expectedSubject = subjectValue.getBoolValue();
-    System.out.println("booleanSubject--->"+expectedSubject);
-    
+   
             if (!claims.getIssuer().contains(expectedIssuer)) {
                 throw new BadJWTException("Issuer inválido");
             }
